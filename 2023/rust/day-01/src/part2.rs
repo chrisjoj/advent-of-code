@@ -52,9 +52,10 @@ fn process_line(line: &str) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     use rstest::rstest;
+    use super::*;
+
 
     #[rstest]
     #[case("two1nine", 29)]
