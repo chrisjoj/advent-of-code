@@ -10,6 +10,7 @@ pub fn process(
     Ok(output.to_string())
 }
 
+#[tracing::instrument(level = "trace", skip(line))]
 fn process_line(line: &str) -> u32 {
     let mut it = (0..line.len()).filter_map(|index| {
         let reduced_line = &line[index..];
@@ -49,9 +50,10 @@ fn process_line(line: &str) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     use rstest::rstest;
+    use super::*;
+
 
     #[rstest]
     #[case("two1nine", 29)]
