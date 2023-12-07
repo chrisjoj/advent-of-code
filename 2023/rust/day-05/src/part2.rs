@@ -1,11 +1,10 @@
 use itertools::Itertools;
 use crate::custom_error::AocError;
-use std::borrow::Borrow;
 
 #[tracing::instrument]
 pub fn process(
     _input: &str,
-) -> miette::Result<u32, AocError> {
+) -> miette::Result<u64, AocError> {
     const SEEDS_SECTION: &str = "seeds:";
     const SEED_MAPPING: &str = "seed-t";
     const SOIL_MAPPING: &str = "soil-t";
@@ -24,7 +23,7 @@ pub fn process(
     let temp_to_humidity = vec![];
     let humidity_to_location = vec![];
 
-    let mut mappings = [seeds_iterator, seed_to_soil, soil_to_fert, fert_to_water, water_to_light, light_to_temp, temp_to_humidity, humidity_to_location];
+    let mut mappings = [seeds_iterator, seed_to_soil.clone(), soil_to_fert.clone(), fert_to_water, water_to_light, light_to_temp, temp_to_humidity, humidity_to_location];
     let mut index = 0;
 
     _input.lines().for_each(|line| {
@@ -32,8 +31,8 @@ pub fn process(
             Some("") => {}
             Some(x) if &x[0..6] == SEEDS_SECTION => {
                 let range: Vec<_> = line[7..].split_ascii_whitespace().chunks(2).into_iter().map(|mut part| {
-                    let start = part.next().unwrap().parse::<u32>().expect("Expected first number");
-                    let range = part.next().unwrap().parse::<u32>().expect("Expected first number");
+                    let start = part.next().unwrap().parse::<u64>().expect("Expected first number");
+                    let range = part.next().unwrap().parse::<u64>().expect("Expected first number");
                     let seeds = Mapping {
                         source: start,
                         range: range,
@@ -41,7 +40,7 @@ pub fn process(
                     };
                     seeds
                 }).collect_vec();
-                println!("Found seeds adding: {:?}",range);
+                println!("Found seeds adding: {:?}", range);
                 range.iter().for_each(|r| {
                     let mapping = mappings.get_mut(0).unwrap();
                     mapping.push(*r);
@@ -54,9 +53,9 @@ pub fn process(
                 let mut parts = line.split_ascii_whitespace();
                 let mapping = mappings.get_mut(index).unwrap();
 
-                let destination = parts.next().unwrap().parse::<u32>().expect("Destination should be a valid number");
-                let source = parts.next().unwrap().parse::<u32>().expect("Source should be a valid number");
-                let range = parts.next().unwrap().parse::<u32>().expect("Range should be a valid number");
+                let destination = parts.next().unwrap().parse::<u64>().expect("Destination should be a valid number");
+                let source = parts.next().unwrap().parse::<u64>().expect("Source should be a valid number");
+                let range = parts.next().unwrap().parse::<u64>().expect("Range should be a valid number");
 
                 let map = Mapping {
                     destination,
@@ -68,38 +67,70 @@ pub fn process(
         }
     });
 
-    let result = mappings.iter().fold((0, mappings[0].clone()), |acc, mapping| {
-        let index = acc.0;
-        let this = acc.1;
-        match index {
-            0 => { (1, this) }
-            _ => {
-                let next = mapping;
+    // let result = mappings.iter().fold((0, mappings[0].clone()), |acc, mapping| {
+    //     let index = acc.0;
+    //     let this = acc.1;
+    //     match index {
+    //         0 => { (1, this) }
+    //         _ => {
+    //             let next = mapping;
+    //
+    //             let new_ranges = this.iter().map(|mapping| {
+    //                 let a = next.iter().map(|next_mapping| {
+    //                     // generate new ranges from comparision
+    //                     let m = Mapping { source: 1, destination: 1, range: 1 };
+    //                     m
+    //                 }).collect::<Vec<Mapping>>();
+    //                 a
+    //             }).collect::<Vec<_>>().into_iter().flatten().collect::<Vec<Mapping>>();
+    //             (index.clone() + 1, new_ranges)
+    //         }
+    //     }
+    // }).1.into_iter().min();
 
-                let new_ranges = this.iter().map(|mapping| {
-                    let a = next.iter().map(|next_mapping| {
-                        // generate new ranges from comparision
-                        let m = Mapping { source: 1, destination: 1, range: 1 };
-                        m
-                    }).collect::<Vec<Mapping>>();
-                    a
-                }).collect::<Vec<_>>().into_iter().flatten().collect::<Vec<Mapping>>();
-                (index.clone() + 1, new_ranges)
-            }
-        }
-    }).1.into_iter().min();
-
-    println!("{:?}", result);
-
+    // println!("{:?}", result);
+    let m2 = mappings.clone();
+    let matches1 = merge_mappings(m2.get(0).unwrap(), m2.get(1).unwrap());
+    let matches2 = merge_mappings(m2.get(2).unwrap(), m2.get(3).unwrap());
+    let matches3 = merge_mappings(m2.get(4).unwrap(), m2.get(5).unwrap());
+    let matches1 = merge_mappings(&matches1,&matches2);
+    let matches2 = merge_mappings(&matches3,m2.get(6).unwrap());
+    let matches = merge_mappings(&matches1, &matches2);
+    println!("{:?}", matches);
     Ok(0)
 }
 
+fn merge_mappings(a: &Vec<Mapping>, b: &Vec<Mapping>) -> Vec<Mapping> {
+    a.iter().map(|a_map| {
+        let b_matches = b.iter().filter_map(|b_map| {
+            match b_map {
+                x if (a_map.source >= b_map.source && a_map.source <= b_map.source + b_map.range) || (
+                    a_map.source + a_map.range >= b_map.source && a_map.source + a_map.range <= b_map.source + b_map.range
+                ) => {
+                    //exact match
+                    Some(Mapping {
+                        source: a_map.source,
+                        destination: x.destination,
+                        range: a_map.range,
+                    })
+                }
+
+                &_ => {
+                    println!("NONE");
+                    None
+                }
+            }
+        }).collect_vec();
+        dbg!(b_matches.clone());
+        b_matches
+    }).flatten().collect()
+}
 
 #[derive(Debug, Eq, Copy, Clone, PartialEq, Ord, PartialOrd)]
 struct Mapping {
-    source: u32,
-    destination: u32,
-    range: u32,
+    source: u64,
+    destination: u64,
+    range: u64,
 }
 
 impl Mapping {
