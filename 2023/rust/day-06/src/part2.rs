@@ -1,4 +1,5 @@
 use crate::custom_error::AocError;
+use rayon::prelude::*;
 
 #[tracing::instrument]
 pub fn process(
@@ -18,13 +19,13 @@ pub fn process(
         let race_length = race.0;
         let record = race.1;
 
-        (0..=*race_length).fold(0, |acc, charge_time| {
+        (0..=*race_length).into_par_iter().fold(||0, |acc, charge_time| {
             match distance(*race_length, charge_time) > *record {
                 true => { acc + 1 }
                 false => { acc }
             }
         },
-        )
+        ).sum::<u64>()
     }).product();
 
     // dbg!(ways_to_win);
