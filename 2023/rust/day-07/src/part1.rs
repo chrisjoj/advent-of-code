@@ -9,42 +9,59 @@ use crate::part1::Type::Kind;
 pub fn process(
     _input: &str,
 ) -> miette::Result<u64, AocError> {
-    let mut hands: Vec<_> = _input.lines().map(|line| {
+    let hands: Vec<_> = _input.lines().map(|line| {
         let mut split = line.split_ascii_whitespace();
         let cards = split.next().expect("Should be a set of cards");
         let bid = split.next().expect("Should be a bid string").parse::<u64>().expect("Bid should be a valid number");
         Hand {
             cards: string_to_cards(cards),
-            bid: bid,
+            bid,
         }
     }).collect();
 
+    let hands = sort(hands);
 
-
-    println!("{:?}", hands);
-    let score = hands.iter().map(|hand| {
-
+    // println!("{:?}", hands);
+    let score = hands.iter().enumerate().map(|(i, hand)| {
+        hand.bid * (i + 1) as u64
     }).sum();
     Ok(score)
 }
 
 fn sort(hands: Vec<Hand>) -> Vec<Hand> {
-    let sorted = hands.iter().sorted_by(|a,b|{
-        if rank(&a.cards) > rank(&b.cards) {return Ordering::Greater}
-        if rank(&a.cards) < rank(&b.cards) {return Ordering::Less}
-        return Ordering::Equal
-    });
+    hands.into_iter().sorted_by(|a, b| {
+        let ranka = rank(&a.cards);
+        let rankb = rank(&b.cards);
+        if ranka > rankb { return Ordering::Greater; }
+        if ranka < rankb { return Ordering::Less; }
+        for i in 0..5 {
+            let carda = a.cards.get(i).unwrap();
+            let cardb = b.cards.get(i).unwrap();
+            if carda > cardb { return Ordering::Greater; }
+            if cardb > carda { return Ordering::Less; }
+        }
+        Ordering::Equal
+    }).collect()
 }
 
-fn rank(cards: &Vec<PlayingCard>) -> Type {
+fn rank(cards: &[PlayingCard]) -> Type {
     let freq = cards.iter().fold(BTreeMap::new(), |mut map, card| {
-        map.entry(card).and_modify(|frq|*frq+=1).or_insert(1);
+        map.entry(card).and_modify(|frq| *frq += 1).or_insert(1);
         map
     });
-    println!("{:?}", freq);
-    Kind(5)
+    let freqs = freq.values().collect::<Vec<_>>();
+    match freqs {
+        x if x.contains(&&5) => Kind(6),
+        x if x.contains(&&4) => Kind(5),
+        x if x.contains(&&3) && x.contains(&&2) => Kind(4),
+        x if x.contains(&&3) => Kind(3),
+        x if x.iter().filter(|x| ***x == 2).collect::<Vec<_>>().len() == 2 => Kind(2),
+        x if x.contains(&&2) => Kind(1),
+        _ => Kind(0)
+    }
 }
 
+#[derive(PartialOrd, PartialEq, Eq, Ord, Debug)]
 enum Type {
     Kind(u8)
 }
@@ -60,16 +77,6 @@ struct Hand {
     bid: u64,
 }
 
-
-impl Eq for Hand {}
-
-
-impl Ord for Hand {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.cards.cmp(&other.cards)
-    }
-}
-
 impl PartialEq<Self> for Hand {
     fn eq(&self, other: &Self) -> bool {
         self.cards == other.cards
@@ -82,6 +89,13 @@ impl PartialOrd<Self> for Hand {
     }
 }
 
+impl Ord for Hand {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.cards.cmp(&other.cards)
+    }
+}
+
+impl Eq for Hand {}
 
 fn string_to_cards(string: &str) -> Vec<PlayingCard> {
     string.chars().map(|ch| {
