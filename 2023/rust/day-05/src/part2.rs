@@ -40,7 +40,6 @@ pub fn process(
                     };
                     seeds
                 }).collect_vec();
-                println!("Found seeds adding: {:?}", range);
                 range.iter().for_each(|r| {
                     let mapping = mappings.get_mut(0).unwrap();
                     mapping.push(*r);
@@ -88,7 +87,6 @@ pub fn process(
     //     }
     // }).1.into_iter().min();
 
-    // println!("{:?}", result);
     let m2 = mappings.clone();
     let matches1 = merge_mappings(m2.get(0).unwrap(), m2.get(1).unwrap());
     let matches2 = merge_mappings(m2.get(2).unwrap(), m2.get(3).unwrap());
@@ -96,7 +94,6 @@ pub fn process(
     let matches1 = merge_mappings(&matches1,&matches2);
     let matches2 = merge_mappings(&matches3,m2.get(6).unwrap());
     let matches = merge_mappings(&matches1, &matches2);
-    println!("{:?}", matches);
     Ok(0)
 }
 
@@ -116,12 +113,10 @@ fn merge_mappings(a: &Vec<Mapping>, b: &Vec<Mapping>) -> Vec<Mapping> {
                 }
 
                 &_ => {
-                    println!("NONE");
                     None
                 }
             }
         }).collect_vec();
-        dbg!(b_matches.clone());
         b_matches
     }).flatten().collect()
 }
